@@ -1,0 +1,14 @@
+{
+  "name": "docker-image-cleaner",
+  "version": "1.0.0",
+  "description": "Remove old docker image builds by a count treshold",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "docker"
+  ],
+  "author": "Timur Kiyivinski",
+  "license": "MIT"
+}
