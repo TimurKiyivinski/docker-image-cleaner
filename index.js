@@ -41,6 +41,23 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
      */
 
     if (!err) {
+      // Default use-case handling
+      const generalRemoveImages = images
+        .map(image => {
+          // Clear untagged use-case
+          if (env.clearUntagged) {
+            if (image.RepoTags.indexOf('<none>:<none>') > -1) {
+              image.delete = true
+              image.reason = 'image is untagged.'
+            } else {
+              image.delete = false
+            }
+          }
+          return image
+        })
+        .filter(image => image.delete)
+
+      // Special image handling
       const processedImages = images
         // Filter for images in manageImages
         .filter(image => image.RepoTags
@@ -97,6 +114,7 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
         })
 
       const keepRemoveImages = manageImages
+        // Group images by repository
         .map(manageImage => {
           const imageKeepList = processedImages
             .filter(image => !image.delete && image.keep && image.name === manageImage)
@@ -109,12 +127,23 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
         })
         .filter(keepImage => keepImage.images.length > 0)
         .filter(keepImage => keepImage.images.length > keepImage.images[0].keep)
+        // Remove older images based on keep treshold
         .map(keepImage => ({ 'images': keepImage.images.slice(keepImage.images[0].keep) }))
         .map(removeImage => removeImage.images)
 
-      processedImages.filter(image => image.delete).concat(...keepRemoveImages).map(image => {
-        console.log(`[DELETE] ${image.Id} because ${image.reason}`)
-      })
+      processedImages.filter(image => image.delete)
+        .concat(generalRemoveImages)
+        .concat(...keepRemoveImages)
+        .map(image => {
+          const dockerImage = docker.getImage(image.Id)
+          dockerImage.remove(err => {
+            if (!err) {
+              console.log(`[DELETE] ${image.Id} because ${image.reason}`)
+            } else {
+              console.log(`[ERROR] [DELETE] ${image.Id} because ${err}`)
+            }
+          })
+        })
     }
   })
 })()
