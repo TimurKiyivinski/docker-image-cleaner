@@ -45,6 +45,19 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
       images
         .filter(image => image.RepoTags
             .filter(repository => manageImages.indexOf(repository.split(':')[0]) > -1).length > 0)
+        // Merge filtered images with env configuration
+        .map(image => {
+          const mergedImage = {}
+          // TODO: Document limitation of assuming all repository prefixes are the same
+          const manageImageName = manageImages[manageImages.indexOf(image.RepoTags[0].split(':')[0])]
+          const manageImage = env.images.filter(envImage => envImage.name === manageImageName)[0]
+
+          Object.keys(manageImage).map(key => mergedImage[key] = manageImage[key])
+          Object.keys(image).map(key => mergedImage[key] = image[key])
+
+          return mergedImage
+        })
+        // Handle merged images
         .map(image => {
           console.log(image)
         })
