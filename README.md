@@ -52,4 +52,3 @@ the image `keep` key to a value of 2 or more.
 
 ## limitations
 * all image repository prefixes are assumed to be the same
-* remote docker API untested
