@@ -65,7 +65,6 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
         // Merge filtered images with env configuration
         .map(image => {
           const mergedImage = {}
-          // TODO: Document limitation of assuming all repository prefixes are the same
           const manageImageName = manageImages[manageImages.indexOf(image.RepoTags[0].split(':')[0])]
           const manageImage = env.images.filter(envImage => envImage.name === manageImageName)[0]
 
@@ -99,8 +98,7 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
 
           // Handle remove image with specific postfix tag
           if (image.removePostfix) {
-            // TODO: Document the limitations of using postfixes
-            const matchedPostfixes = image.RepoTags.filter(repository => repository.indexOf(image.removePostfix) > -1)
+            const matchedPostfixes = image.RepoTags.filter(repository => repository.endsWith(image.removePostfix))
             if (matchedPostfixes.length > 0) {
               image.delete = true
               image.reason = `image has tag postfix of ${image.removePostfix}.`
