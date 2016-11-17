@@ -96,8 +96,24 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
           return image
         })
 
-      processedImages.filter(image => image.delete).map(image => {
-        console.log(`[DELETE] ${image.Id} because: ${image.reason}`)
+      const keepRemoveImages = manageImages
+        .map(manageImage => {
+          const imageKeepList = processedImages
+            .filter(image => !image.delete && image.keep && image.name === manageImage)
+            .sort((a, b) => b.Created - a.Created)
+            .map(image => {
+              image.reason = 'image is outdated.'
+              return image
+            })
+          return { 'images': imageKeepList }
+        })
+        .filter(keepImage => keepImage.images.length > 0)
+        .filter(keepImage => keepImage.images.length > keepImage.images[0].keep)
+        .map(keepImage => ({ 'images': keepImage.images.slice(keepImage.images[0].keep) }))
+        .map(removeImage => removeImage.images)
+
+      processedImages.filter(image => image.delete).concat(...keepRemoveImages).map(image => {
+        console.log(`[DELETE] ${image.Id} because ${image.reason}`)
       })
     }
   })
