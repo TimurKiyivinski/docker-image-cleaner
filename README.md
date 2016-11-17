@@ -7,13 +7,17 @@ Copy `env.json.example` to `env.json` and run `npm start`.
 ## docker socket configuration
 You can configure usage for either a local socket via `socketPath` or a Docker
 remote API via the `host` and `port` options. If `socketPath` exists, the
-application will ignore other options.
+application will ignore other options. More configuration details available at
+the [dockerode](https://github.com/apocas/dockerode) GitHub page.
 ```JSON
 {
     "socketPath": "/var/run/docker.sock",
     "host": "127.0.0.1",
     "port": 5000,
-    ...
+    "protocol": "http",
+    "ca": "ca.pem",
+    "cert": "cert.pem",
+    "key": "key.pem"
 }
 ```
 

@@ -17,7 +17,11 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
       console.log(`Connecting to Docker remote at ${env.host}:${env.port}`)
       return new Docker({
         host: env.host,
-        port: env.port
+        port: env.port,
+        protocol: env.protocol || 'http',
+        ca: env.ca ? fs.readFileSync(env.ca) : undefined,
+        cert: env.cert ? fs.readFileSync(env.cert) : undefined,
+        key: env.key ? fs.readFileSync(env.key) : undefined
       })
     }
   }
