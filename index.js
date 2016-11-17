@@ -41,8 +41,8 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
      */
 
     if (!err) {
-      // Filter for images in manageImages
-      images
+      const processedImages = images
+        // Filter for images in manageImages
         .filter(image => image.RepoTags
             .filter(repository => manageImages.indexOf(repository.split(':')[0]) > -1).length > 0)
         // Merge filtered images with env configuration
@@ -59,8 +59,46 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
         })
         // Handle merged images
         .map(image => {
-          console.log(image)
+          // Handle keep latest image only use-case
+          if (image.onlyLatest) {
+            if (image.RepoTags.indexOf(`${image.name}:latest`) == -1) {
+              image.delete = true
+              image.reason = 'image is not latest.'
+            } else {
+              image.delete = false
+            }
+          }
+
+          // Handle remove image with specific prefix tag
+          if (image.removePrefix) {
+            const matchedPrefixes = image.RepoTags.filter(repository => repository.indexOf(`${image.name}:${image.removePrefix}`) > -1)
+            if (matchedPrefixes.length > 0) {
+              image.delete = true
+              image.reason = `image has tag prefix of ${image.removePrefix}.`
+            } else {
+              image.delete = false
+            }
+          }
+
+          // Handle remove image with specific postfix tag
+          if (image.removePostfix) {
+            // TODO: Document the limitations of using postfixes
+            const matchedPostfixes = image.RepoTags.filter(repository => repository.indexOf(image.removePostfix) > -1)
+            if (matchedPostfixes.length > 0) {
+              image.delete = true
+              image.reason = `image has tag postfix of ${image.removePostfix}.`
+            } else {
+              image.delete = false
+            }
+          }
+
+          // Return processed image
+          return image
         })
+
+      processedImages.filter(image => image.delete).map(image => {
+        console.log(`[DELETE] ${image.Id} because: ${image.reason}`)
+      })
     }
   })
 })()
