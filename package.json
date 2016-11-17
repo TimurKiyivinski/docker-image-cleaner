@@ -10,5 +10,8 @@
     "docker"
   ],
   "author": "Timur Kiyivinski",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "dockerode": "^2.3.1"
+  }
 }
