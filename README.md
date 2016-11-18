@@ -68,7 +68,7 @@ use cron, just unset or remove the `cron` key from your `env.json`.
 This functionality is based on [node-schedule](https://github.com/node-schedule/node-schedule)
 
 ## run in Docker
-If you wish to run the application inside a Docker container, simply built the image:
+If you wish to run the application inside a Docker container, simply build the image:
 ```
 docker build -t cleaner .
 ```
