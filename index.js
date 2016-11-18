@@ -155,6 +155,27 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
         console.log(`[ERR] Docker daemon error with ${err}`)
       }
     })
+
+    docker.listContainers({ all: true }, (err, containers) => {
+      if (!err) {
+        const processedContainers = containers
+          .map(container => env.clearExited && container.State === 'exited' ? Object.assign({ delete: true, reason: 'container has exited.' }, container) : container)
+
+        processedContainers.filter(container => container.delete)
+          .map(container => {
+            const dockerContainer = docker.getContainer(container.Id)
+            dockerContainer.remove(err => {
+              if (!err) {
+                console.log(`[DELETE] ${container.Id} because ${container.reason}`)
+              } else {
+                console.log(`[ERROR] [DELETE] ${container.Id} because ${err}`)
+              }
+            })
+          })
+      } else {
+        console.log(`[ERR] Docker daemon error with ${err}`)
+      }
+    })
   }
 
   if (env.cron) {

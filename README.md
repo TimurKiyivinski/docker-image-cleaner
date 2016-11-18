@@ -28,6 +28,9 @@ other options.
 ### clear untagged images
 Set the key `clearUntagged` as `true`.
 
+## clear exited containers
+Set the key `clearExited` as `true`.
+
 ## image specific use-cases
 Each image use-case has to be appended to the `images` key as part of an array
 in the `env.json`. Set the image repository name under the key `name`.
