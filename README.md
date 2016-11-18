@@ -50,5 +50,22 @@ This can be useful for removing older images builds that may no longer be in
 use. It can be used along with `removePrefix` and `removeSuffix` options. Set
 the image `keep` key to a value of 2 or more.
 
+## cron
+You can set the application to clear Docker images periodically based on a cron
+schedule using the `cron` key with a cron-style string. If you don't wish to
+use cron, just unset or remove the `cron` key from your `env.json`.
+```
+*    *    *    *    *    *
+┬    ┬    ┬    ┬    ┬    ┬
+│    │    │    │    │    |
+│    │    │    │    │    └ day of week (0 - 7) (0 or 7 is Sun)
+│    │    │    │    └───── month (1 - 12)
+│    │    │    └────────── day of month (1 - 31)
+│    │    └─────────────── hour (0 - 23)
+│    └──────────────────── minute (0 - 59)
+└───────────────────────── second (0 - 59, OPTIONAL)
+```
+This functionality is based on [node-schedule](https://github.com/node-schedule/node-schedule)
+
 ## limitations
 * all image repository prefixes are assumed to be the same
