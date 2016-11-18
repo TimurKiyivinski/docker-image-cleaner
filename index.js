@@ -51,10 +51,14 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
           // Clear untagged use-case
           if (env.clearUntagged) {
             if (image.RepoTags.indexOf('<none>:<none>') > -1) {
-              image.delete = true
-              image.reason = 'image is untagged.'
+              return Object.assign({
+                delete: true,
+                reason: 'image is untagged.'
+              }, image)
             } else {
-              image.delete = false
+              return Object.assign({
+                delete: false
+              }, image)
             }
           }
           return image
@@ -79,40 +83,38 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
         })
         // Handle merged images
         .map(image => {
+          const processImage = Object.assign({
+            delete: false
+          }, image)
+
           // Handle keep latest image only use-case
-          if (image.onlyLatest) {
-            if (image.RepoTags.indexOf(`${image.name}:latest`) == -1) {
-              image.delete = true
-              image.reason = 'image is not latest.'
-            } else {
-              image.delete = false
+          if (processImage.onlyLatest) {
+            if (processImage.RepoTags.indexOf(`${processImage.name}:latest`) == -1) {
+              processImage.delete = true
+              processImage.reason = 'image is not latest.'
             }
           }
 
           // Handle remove image with specific prefix tag
-          if (image.removePrefix) {
-            const matchedPrefixes = image.RepoTags.filter(repository => repository.indexOf(`${image.name}:${image.removePrefix}`) > -1)
+          if (processImage.removePrefix) {
+            const matchedPrefixes = processImage.RepoTags.filter(repository => repository.indexOf(`${processImage.name}:${processImage.removePrefix}`) > -1)
             if (matchedPrefixes.length > 0) {
-              image.delete = true
-              image.reason = `image has tag prefix of ${image.removePrefix}.`
-            } else {
-              image.delete = false
+              processImage.delete = true
+              processImage.reason = `image has tag prefix of ${processImage.removePrefix}.`
             }
           }
 
           // Handle remove image with specific postfix tag
-          if (image.removePostfix) {
-            const matchedPostfixes = image.RepoTags.filter(repository => repository.endsWith(image.removePostfix))
+          if (processImage.removePostfix) {
+            const matchedPostfixes = processImage.RepoTags.filter(repository => repository.endsWith(processImage.removePostfix))
             if (matchedPostfixes.length > 0) {
-              image.delete = true
-              image.reason = `image has tag postfix of ${image.removePostfix}.`
-            } else {
-              image.delete = false
+              processImage.delete = true
+              processImage.reason = `image has tag postfix of ${processImage.removePostfix}.`
             }
           }
 
           // Return processed image
-          return image
+          return processImage
         })
 
       const keepRemoveImages = manageImages
@@ -122,8 +124,9 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
             .filter(image => !image.delete && image.keep && image.name === manageImage)
             .sort((a, b) => b.Created - a.Created)
             .map(image => {
-              image.reason = 'image is outdated.'
-              return image
+              return Object.assign({
+                reason: 'image is outdated.'
+              }, image)
             })
           return { 'images': imageKeepList }
         })
@@ -146,6 +149,8 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
             }
           })
         })
+    } else {
+      console.log(`[ERR] Docker daemon error with ${err}`)
     }
   })
 })()
