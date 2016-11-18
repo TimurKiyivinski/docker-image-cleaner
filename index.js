@@ -28,10 +28,10 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
       }
     }
 
-    // List of images to clean
-    const manageImages = env.images.map(image => image.name)
-
+    // Create Docker connection
     const docker = createDockerConnection()
+
+    // Docker Image handler
     docker.listImages((err, images) => {
       /* Image data format
        * {
@@ -49,95 +49,48 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
       if (!err) {
         // Default use-case handling
         const generalRemoveImages = images
-          .map(image => {
-            // Clear untagged use-case
-            if (env.clearUntagged) {
-              if (image.RepoTags.indexOf('<none>:<none>') > -1) {
-                return Object.assign({
-                  delete: true,
-                  reason: 'image is untagged.'
-                }, image)
-              } else {
-                return Object.assign({
-                  delete: false
-                }, image)
-              }
-            }
-            return image
-          })
+          // Clear untagged use-case
+          .map(image => env.clearUntagged && image.RepoTags.indexOf('<none>:<none>') > -1
+            ? Object.assign({ delete: true, reason: 'image is untagged' }, image)
+            : image)
           .filter(image => image.delete)
 
-        // Special image handling
+        // Image specific use-cases handlers
+        const manageImages = env.images.map(image => image.name)
+
         const processedImages = images
           // Filter for images in manageImages
           .filter(image => image.RepoTags
               .filter(repository => manageImages.indexOf(repository.split(':')[0]) > -1).length > 0)
           // Merge filtered images with env configuration
-          .map(image => {
-            const mergedImage = {}
-            const manageImageName = manageImages[manageImages.indexOf(image.RepoTags[0].split(':')[0])]
-            const manageImage = env.images.filter(envImage => envImage.name === manageImageName)[0]
+          .map(image => Object.assign({}, env.images.filter(envImage => envImage.name === manageImages[manageImages.indexOf(image.RepoTags[0].split(':')[0])])[0], image))
+          // Pipe images through each use case
+          .map(image => image.onlyLatest && image.RepoTags.indexOf(`${image.name}:latest`) == -1
+            ? Object.assign({ delete: true, reason: 'image is not latest'}, image)
+            : image)
+          .map(image => image.removePrefix && image.RepoTags.filter(repository => repository.indexOf(`${image.name}:${image.removePrefix}`) > -1).length > 0
+            ? Object.assign({ delete: true, reason: `image has tag prefix of ${image.removePrefix}.`}, image)
+            : image)
+          .map(image => image.removePostfix && image.filter(repository => repository.endsWith(image.removePostfix)).length > 0
+            ? Object.assign({ delete: true, reason: `image has tag postfix of ${image.removePostfix}.`}, image)
+            : image)
 
-            Object.keys(manageImage).map(key => mergedImage[key] = manageImage[key])
-            Object.keys(image).map(key => mergedImage[key] = image[key])
-
-            return mergedImage
-          })
-          // Handle merged images
-          .map(image => {
-            const processImage = Object.assign({
-              delete: false
-            }, image)
-
-            // Handle keep latest image only use-case
-            if (processImage.onlyLatest) {
-              if (processImage.RepoTags.indexOf(`${processImage.name}:latest`) == -1) {
-                processImage.delete = true
-                processImage.reason = 'image is not latest.'
-              }
-            }
-
-            // Handle remove image with specific prefix tag
-            if (processImage.removePrefix) {
-              const matchedPrefixes = processImage.RepoTags.filter(repository => repository.indexOf(`${processImage.name}:${processImage.removePrefix}`) > -1)
-              if (matchedPrefixes.length > 0) {
-                processImage.delete = true
-                processImage.reason = `image has tag prefix of ${processImage.removePrefix}.`
-              }
-            }
-
-            // Handle remove image with specific postfix tag
-            if (processImage.removePostfix) {
-              const matchedPostfixes = processImage.RepoTags.filter(repository => repository.endsWith(processImage.removePostfix))
-              if (matchedPostfixes.length > 0) {
-                processImage.delete = true
-                processImage.reason = `image has tag postfix of ${processImage.removePostfix}.`
-              }
-            }
-
-            // Return processed image
-            return processImage
-          })
-
+        // Manage images with keep keys after processing
         const keepRemoveImages = manageImages
           // Group images by repository
-          .map(manageImage => {
-            const imageKeepList = processedImages
+          .map(manageImage => ({
+            images: processedImages
               .filter(image => !image.delete && image.keep && image.name === manageImage)
               .sort((a, b) => b.Created - a.Created)
-              .map(image => {
-                return Object.assign({
-                  reason: 'image is outdated.'
-                }, image)
-              })
-            return { 'images': imageKeepList }
-          })
+              .map(image => Object.assign({ reason: 'image is outdated.' }, image))
+          }))
           .filter(keepImage => keepImage.images.length > 0)
           .filter(keepImage => keepImage.images.length > keepImage.images[0].keep)
           // Remove older images based on keep treshold
           .map(keepImage => ({ 'images': keepImage.images.slice(keepImage.images[0].keep) }))
           .map(removeImage => removeImage.images)
 
+        // Combine all image arrays and begin deleting
         processedImages.filter(image => image.delete)
           .concat(generalRemoveImages)
           .concat(...keepRemoveImages)
@@ -156,11 +109,15 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
       }
     })
 
+    // Docker Container Handler
     docker.listContainers({ all: true }, (err, containers) => {
       if (!err) {
         const processedContainers = containers
-          .map(container => env.clearExited && container.State === 'exited' ? Object.assign({ delete: true, reason: 'container has exited.' }, container) : container)
+          .map(container => env.clearExited && container.State === 'exited'
+            ? Object.assign({ delete: true, reason: 'container has exited.' }, container)
+            : container)
 
+        // Delete processed containers
         processedContainers.filter(container => container.delete)
           .map(container => {
             const dockerContainer = docker.getContainer(container.Id)
