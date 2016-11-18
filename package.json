@@ -1,5 +1,6 @@
 {
   "name": "docker-image-cleaner",
+  "engines" : { "node" : ">=7.0.0" },
   "version": "1.0.0",
   "description": "Remove old docker image builds by a count treshold",
   "main": "index.js",
