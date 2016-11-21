@@ -49,6 +49,10 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
       if (!err) {
         // Default use-case handling
         const generalRemoveImages = images
+          // Remap images with no RepoTag
+          .map(image => image.RepoTags === null
+            ? Object.assign({}, image, { RepoTags: ['<none>:<none>']})
+            : image)
           // Clear untagged use-case
           .map(image => env.clearUntagged && image.RepoTags.indexOf('<none>:<none>') > -1
             ? Object.assign({ delete: true, reason: 'image is untagged' }, image)
@@ -59,6 +63,10 @@ const env = JSON.parse(fs.readFileSync('env.json', 'utf8'))
         const manageImages = env.images.map(image => image.name)
 
         const processedImages = images
+          // Remap images with no RepoTag
+          .map(image => image.RepoTags === null
+            ? Object.assign({}, image, { RepoTags: ['<none>:<none>']})
+            : image)
           // Filter for images in manageImages
           .filter(image => image.RepoTags
               .filter(repository => manageImages.indexOf(repository.split(':')[0]) > -1).length > 0)
